@@ -89,14 +89,13 @@ manage_packages() {
             fi
             yellow "正在安装 ${package}..."
             if command -v apt &>/dev/null; then
-                DEBIAN_FRONTEND=noninteractive apt install -y "$package"
+                DEBIAN_FRONTEND=noninteractive apt-get update -y && apt install -y "$package"
             elif command -v dnf &>/dev/null; then
-                dnf install -y "$package"
+                dnf update -y && dnf install -y "$package"
             elif command -v yum &>/dev/null; then
-                yum install -y "$package"
+                yum update -y &7 yum install -y "$package"
             elif command -v apk &>/dev/null; then
-                apk update
-                apk add "$package"
+                apk update && apk add "$package"
             else
                 red "Unknown system!"
                 return 1
@@ -176,8 +175,8 @@ install_xray() {
     command -v ip6tables &> /dev/null && ip6tables -F > /dev/null 2>&1 && ip6tables -P INPUT ACCEPT > /dev/null 2>&1 && ip6tables -P FORWARD ACCEPT > /dev/null 2>&1 && ip6tables -P OUTPUT ACCEPT > /dev/null 2>&1
 
     output=$(/etc/xray/xray x25519)
-    private_key=$(echo "${output}" | grep "PrivateKey:" | awk '{print $2}')
-    public_key=$(echo "${output}" | grep "Password:" | awk '{print $2}')
+    private_key=$(echo "${output}" | grep 'PrivateKey:' | awk '{print $2}')
+    public_key=$(echo "${output}" | grep 'Password (PublicKey):' | awk '{print $3}')
 
    # 生成配置文件
 cat > "${config_dir}" << EOF
@@ -251,7 +250,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 NoNewPrivileges=yes
-ExecStart=$work_dir/xray run -c $config_dir
+ExecStart=$work_dir/xray -c $config_dir
 Restart=on-failure
 RestartPreventExitStatus=23
 
@@ -300,7 +299,7 @@ alpine_openrc_services() {
 
 description="Xray service"
 command="/etc/xray/xray"
-command_args="run -c /etc/xray/config.json"
+command_args="-c /etc/xray/config.json"
 command_background=true
 pidfile="/var/run/xray.pid"
 EOF
